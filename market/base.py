@@ -6,25 +6,43 @@ import requests
 class Broker(object):
     
     def __init__(self):
-        pass
+        self.session = self._init_session()
 
-    def _request_api(self, method, path, data, headers, **kwargs):
-        pass
-    
-    def _get(self, url, params, add_to_headers=None):
-        headers = {
-            "Content-type": "application/x-www-form-urlencoded",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36",
-        }
-        if add_to_headers:
-            headers.update(add_to_headers)
-        response = self._request_api("get", url, params, headers)
+    def _init_session(self):
+        session = requests.session()
+        return session
 
+    def _request(self, method, uri, **kwargs):
+        # set default requests timeout
+        kwargs['timeout'] = 30
+        
+        headers = kwargs.get("headers")
+        if headers:
+            self.session.headers.update(headers)
+        
+        data = kwargs.get("data")
+        if data and method == "get":
+            kwargs["params"] = data
+            del kwargs["data"]
+        
+        response = getattr(self.session, method)(uri, **kwargs)
+        return self._handle_response(response)
 
-    def _post(self, url, params, add_to_headers=None):
-        pass
+    def _handle_response(self, response):
+        if not str(response.status_code).startswith('2'):
+            raise Exception(response)
+        try:
+            return response.json()
+        except ValueError:
+            raise Exception('Invalid Response: %s' % response.text)
 
-    def get_kline(self, symbol, period, size=150):
+    def _get(self, uri, **kwargs):
+        return self._request("get", uri, **kwargs)
+
+    def _post(self, url, **kwargs):
+        return self._request("post", uri, **kwargs)
+
+    def get_kline(self, **kwargs):
         raise NotImplementedError()
 
     def get_depth(self, symbol, type):
@@ -34,4 +52,7 @@ class Broker(object):
         raise NotImplementedError()
 
     def get_ticker(self, symbol):
+        raise NotImplementedError()
+
+    def get_symbols(self):
         raise NotImplementedError()
