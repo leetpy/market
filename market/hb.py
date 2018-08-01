@@ -17,25 +17,20 @@ class HBBroker(base.Broker):
         return self._get(uri, data=kwargs)        
 
     def kline_to_csv(self, **kwargs):
-        klines = self.get_kline(kwargs)
+        klines = self.get_kline(**kwargs)
+        if not len(klines):
+            return
+
         current_dir = "."
         output_dir = os.path.join(current_dir, "output")
-        os.makedirs(output_dir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        csv_file = os.path.join(output_dir, "kline.csv")
+
         columns = ["id", "open", "close", "low", "high", "amount", "vol", "count"]
         output_data = pandas.DataFrame(columns=columns)
-        while True:
-            try:
-                tmp_data = self.get_kline(kwargs)
-            except Exception as e:
-                print(e)
-
-            if not len(tmp_data):
-                break
-
-            output_data = output_data.append(pd.DataFrame(columns=output_data.columns, data=tmp_data),
-                                             ignore_index = True)
-
-        return output_data
+        output_data = output_data.append(pandas.DataFrame(columns=columns, data=klines.get("data")), ignore_index=True)
+        output_data.to_csv(csv_file, index=False, mode='w')
 
     def get_symbols(self):
         uri = os.path.join(self.MARKET_URL, "v1/common/symbols")
